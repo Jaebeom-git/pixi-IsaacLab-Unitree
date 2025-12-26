@@ -1,0 +1,79 @@
+[workspace]
+channels = ["conda-forge"]
+name = "unitree-rl"
+platforms = ["linux-64"]
+version = "0.1.0"
+
+[system-requirements]
+libc = { family = "glibc", version = "2.35" }
+
+[dependencies]
+python = "3.11.*"
+git = "*"
+# git-lfs = "*"
+pip = "*"
+
+[pypi-options]
+# Uncomment to use local wheels from ./wheelhouse
+# find-links = [{ path = "./wheelhouse" }]
+extra-index-urls = ["https://pypi.nvidia.com"]
+
+[pypi-dependencies]
+torch = { version = "==2.7.0", index = "https://download.pytorch.org/whl/cu128" }
+torchvision = { version = "==0.22.0", index = "https://download.pytorch.org/whl/cu128" }
+isaacsim = { version = "==5.1.0", extras = ["all", "extscache"] }
+wandb = ">=0.23.1, <0.24"
+
+
+[tasks]
+# IsaacLab
+isaaclab-setup = { cmd = ["bash", "-lc", "set -e; python tools/isaaclab_install.py \"$@\"", "--"] }
+
+# VSCode
+vscode-setup   = { cmd = ["bash", "-lc", "set -e; python tools/vscode_settings.py \"$@\"", "--"] }
+
+# Unitree RL Lab
+unitree-clone = { cmd = ["bash", "-lc", """set -e
+if [ -d unitree_rl_lab/.git ]; then
+  echo "[OK] unitree_rl_lab already exists"
+else
+  git clone https://github.com/unitreerobotics/unitree_rl_lab.git
+fi
+"""] }
+
+unitree-ros-clone = { cmd = ["bash", "-lc", """set -e
+if [ -d unitree_ros/.git ]; then
+  echo "[OK] unitree_ros already exists"
+else
+  git clone https://github.com/unitreerobotics/unitree_ros.git
+fi
+"""] }
+
+unitree-patch-urdf = { cmd = ["bash", "-lc", "python tools/patch_unitree.py --mode urdf --write-dirs --no-backup"] }
+unitree-patch-usd  = { cmd = ["bash", "-lc", "python tools/patch_unitree.py --mode usd --write-dirs --no-backup"] }
+
+unitree-pip-editable = { cmd = ["bash", "-lc", """set -e
+python -m pip install -e unitree_rl_lab/source/unitree_rl_lab
+"""] }
+
+# One-shot setup
+unitree-setup = { depends-on = ["unitree-clone", "unitree-ros-clone", "unitree-patch-urdf", "unitree-pip-editable"] }
+
+# Convenience
+unitree-envs = { cmd = ["bash", "-lc", """set -e
+python unitree_rl_lab/scripts/list_envs.py
+"""] }
+
+unitree-g1-train = { cmd = ["bash", "-lc", """set -e
+python unitree_rl_lab/scripts/rsl_rl/train.py \
+  --headless \
+  --task Unitree-G1-29dof-Velocity \
+  --logger wandb \
+  "$@"
+""", "--"] }
+
+unitree-g1-play = { cmd = ["bash", "-lc", """set -e
+python unitree_rl_lab/scripts/rsl_rl/play.py \
+  --task Unitree-G1-29dof-Velocity \
+  "$@"
+""", "--"] }
