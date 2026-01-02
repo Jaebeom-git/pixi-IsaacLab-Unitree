@@ -42,12 +42,17 @@ In pixi.toml:
 pixi run isaaclab-setup
 ```
 
-### 3) VSCode setup
+### 3) rsl_rl setup
+```bash
+pixi rsl-rl-setup
+```
+
+### 4) VSCode setup
 ```bash
 pixi run vscode-setup
 ```
 
-### 4) Unitree setup (clone + patch + editable install)
+### 5) Unitree setup (clone + patch + editable install)
 ```bash
 pixi run unitree-setup
 ```
