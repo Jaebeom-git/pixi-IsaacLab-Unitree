@@ -32,6 +32,9 @@ isaaclab-setup = { cmd = ["bash", "-lc", "set -e; python tools/isaaclab_install.
 # VSCode
 vscode-setup   = { cmd = ["bash", "-lc", "set -e; python tools/vscode_settings.py \"$@\"", "--"] }
 
+# rsl_rl
+rsl-rl-setup = { cmd = ["bash", "-lc", "set -e; python tools/rsl_rl_install.py --clone \"$@\"", "--"] }
+
 # Unitree RL Lab
 unitree-clone = { cmd = ["bash", "-lc", """set -e
 if [ -d unitree_rl_lab/.git ]; then
