@@ -1,48 +1,69 @@
 [workspace]
-channels = ["conda-forge"]
-name = "unitree-rl"
-platforms = ["linux-64"]
+name = "unitree"
 version = "0.1.0"
+channels = ["conda-forge"]
+platforms = ["linux-64"]
 
 [system-requirements]
 libc = { family = "glibc", version = "2.35" }
 
-[dependencies]
+[tasks]
+# Unitree SDK2
+unitree-sdk2-clone = { cmd = ["bash", "-lc", """set -e
+if [ -d ./unitree_sdk2/.git ]; then
+  echo "[OK] unitree_sdk2 already exists"
+else
+  git clone https://github.com/unitreerobotics/unitree_sdk2.git ./unitree_sdk2
+fi
+"""], description = "Clone unitree_sdk2 repo if missing." }
+
+unitree-sdk2-apt-deps = { cmd = ["bash", "-lc", "sudo apt update && sudo apt install -y cmake g++ build-essential libyaml-cpp-dev libeigen3-dev libboost-all-dev libspdlog-dev libfmt-dev"], description = "Install system dependencies for Unitree SDK2." }
+
+unitree-sdk2-build = { cmd = ["bash", "-lc", """set -e
+mkdir -p ./unitree_sdk2/build
+cd ./unitree_sdk2/build
+cmake .. -DCMAKE_INSTALL_PREFIX=/usr/local -DCMAKE_C_COMPILER=/usr/bin/gcc -DCMAKE_CXX_COMPILER=/usr/bin/g++
+make -j4
+"""], description = "Configure and build Unitree SDK2.", depends-on = ["unitree-sdk2-apt-deps", "unitree-sdk2-clone"] }
+
+unitree-sdk2-install = { cmd = ["bash", "-lc", """set -e
+cd ./unitree_sdk2/build
+sudo make install
+"""], description = "Install Unitree SDK2 to /usr/local.", depends-on = ["unitree-sdk2-build"] }
+
+unitree-sdk2-setup = { depends-on = ["unitree-sdk2-clone", "unitree-sdk2-build", "unitree-sdk2-install"], description = "Run full SDK2 setup (clone/build/install)." }
+
+[feature.unitree-rl-lab.dependencies]
 python = "3.11.*"
 git = "*"
-# git-lfs = "*"
 pip = "*"
+# git-lfs = "*"
 
-[pypi-options]
-# Uncomment to use local wheels from ./wheelhouse
-# find-links = [{ path = "./wheelhouse" }]
+[feature.unitree-rl-lab.pypi-options]
+# Local wheels in ./wheelhouse (optional)
+find-links = [{ path = "./wheelhouse" }]
 extra-index-urls = ["https://pypi.nvidia.com"]
 
-[pypi-dependencies]
+[feature.unitree-rl-lab.pypi-dependencies]
 torch = { version = "==2.7.0", index = "https://download.pytorch.org/whl/cu128" }
 torchvision = { version = "==0.22.0", index = "https://download.pytorch.org/whl/cu128" }
 isaacsim = { version = "==5.1.0", extras = ["all", "extscache"] }
 wandb = ">=0.23.1, <0.24"
 
+[feature.unitree-rl-lab.tasks]
+# IsaacLab tooling
+isaaclab-setup = { cmd = ["bash", "-lc", "set -e; python tools/isaaclab_install.py \"$@\"", "--"], description = "Install IsaacLab dependencies and assets." }
+vscode-setup = { cmd = ["bash", "-lc", "set -e; python tools/vscode_settings.py \"$@\"", "--"], description = "Apply VS Code settings for the repo." }
+rsl-rl-setup = { cmd = ["bash", "-lc", "set -e; python tools/rsl_rl_install.py --clone \"$@\"", "--"], description = "Clone and install rsl_rl." }
 
-[tasks]
-# IsaacLab
-isaaclab-setup = { cmd = ["bash", "-lc", "set -e; python tools/isaaclab_install.py \"$@\"", "--"] }
-
-# VSCode
-vscode-setup   = { cmd = ["bash", "-lc", "set -e; python tools/vscode_settings.py \"$@\"", "--"] }
-
-# rsl_rl
-rsl-rl-setup = { cmd = ["bash", "-lc", "set -e; python tools/rsl_rl_install.py --clone \"$@\"", "--"] }
-
-# Unitree RL Lab
+# Repos
 unitree-clone = { cmd = ["bash", "-lc", """set -e
 if [ -d unitree_rl_lab/.git ]; then
   echo "[OK] unitree_rl_lab already exists"
 else
   git clone https://github.com/unitreerobotics/unitree_rl_lab.git
 fi
-"""] }
+"""], description = "Clone unitree_rl_lab repo if missing." }
 
 unitree-ros-clone = { cmd = ["bash", "-lc", """set -e
 if [ -d unitree_ros/.git ]; then
@@ -50,22 +71,24 @@ if [ -d unitree_ros/.git ]; then
 else
   git clone https://github.com/unitreerobotics/unitree_ros.git
 fi
-"""] }
+"""], description = "Clone unitree_ros repo if missing." }
 
-unitree-patch-urdf = { cmd = ["bash", "-lc", "python tools/patch_unitree.py --mode urdf --write-dirs --no-backup"] }
-unitree-patch-usd  = { cmd = ["bash", "-lc", "python tools/patch_unitree.py --mode usd --write-dirs --no-backup"] }
+# Patches
+unitree-patch-urdf = { cmd = ["bash", "-lc", "python tools/patch_unitree.py --mode urdf --write-dirs --no-backup"], description = "Patch Unitree URDF assets for IsaacLab." }
+unitree-patch-usd = { cmd = ["bash", "-lc", "python tools/patch_unitree.py --mode usd --write-dirs --no-backup"], description = "Patch Unitree USD assets for IsaacLab." }
 
+# Python install
 unitree-pip-editable = { cmd = ["bash", "-lc", """set -e
 python -m pip install -e unitree_rl_lab/source/unitree_rl_lab
-"""] }
+"""], description = "Install unitree_rl_lab as editable." }
 
 # One-shot setup
-unitree-setup = { depends-on = ["unitree-clone", "unitree-ros-clone", "unitree-patch-urdf", "unitree-pip-editable"] }
+unitree-setup = { depends-on = ["unitree-sdk2-setup", "unitree-clone", "unitree-ros-clone", "unitree-patch-urdf", "unitree-pip-editable"], description = "Run full Unitree RL Lab setup." }
 
 # Convenience
 unitree-envs = { cmd = ["bash", "-lc", """set -e
 python unitree_rl_lab/scripts/list_envs.py
-"""] }
+"""], description = "List available Unitree RL Lab environments." }
 
 unitree-g1-train = { cmd = ["bash", "-lc", """set -e
 python unitree_rl_lab/scripts/rsl_rl/train.py \
@@ -73,10 +96,114 @@ python unitree_rl_lab/scripts/rsl_rl/train.py \
   --task Unitree-G1-29dof-Velocity \
   --logger wandb \
   "$@"
-""", "--"] }
+""", "--"], description = "Train G1 policy with rsl_rl." }
 
 unitree-g1-play = { cmd = ["bash", "-lc", """set -e
 python unitree_rl_lab/scripts/rsl_rl/play.py \
   --task Unitree-G1-29dof-Velocity \
   "$@"
-""", "--"] }
+""", "--"], description = "Play G1 policy with rsl_rl." }
+
+# KIMM
+kimm-build = { cmd = ["bash", "-lc", """set -euo pipefail
+cd unitree_rl_lab/deploy/robots/kimm_bot_3
+rm -rf build
+cmake -S . -B build
+cmake --build build -j"$(nproc)"
+"""], description = "Build KIMM Bot 3 native controller." }
+
+kimm-train = { cmd = ["bash", "-lc", """set -e
+python unitree_rl_lab/scripts/rsl_rl/train.py \
+  --headless \
+  --task KIMM-Bot3-Velocity \
+  --logger wandb \
+  "$@"
+""", "--"], description = "Train KIMM Bot 3 policy with rsl_rl." }
+
+kimm-play = { cmd = ["bash", "-lc", """set -e
+python unitree_rl_lab/scripts/rsl_rl/play.py \
+  --task KIMM-Bot3-Velocity \
+  "$@"
+""", "--"], description = "Play KIMM Bot 3 policy with rsl_rl." }
+
+kimm-deploy = { cmd = ["bash", "-lc", """set -e
+./unitree_rl_lab/deploy/robots/kimm_bot_3/build/kimm_bot_3_ctrl --network lo
+""", "--"], description = "Run KIMM Bot 3 controller on loopback." }
+
+[feature.unitree-mujoco.dependencies]
+python = "3.10.*"
+git = "*"
+pip = "*"
+cmake = "*"
+ninja = "*"
+pkg-config = "*"
+c-compiler = "*"
+cxx-compiler = "*"
+boost-cpp = "*"
+glfw = "*"
+
+[feature.unitree-mujoco.pypi-dependencies]
+numpy = "*"
+opencv-python = "*"
+cyclonedds = "==0.10.2"
+mujoco = "*"
+pygame = "*"
+
+[feature.unitree-mujoco.tasks]
+# Repos
+unitree-mujoco-clone = { cmd = ["bash", "-lc", """set -e
+if [ -d unitree_mujoco/.git ]; then
+  echo "[OK] unitree_mujoco already exists"
+else
+  git clone https://github.com/unitreerobotics/unitree_mujoco.git
+fi
+"""], description = "Clone unitree_mujoco repo if missing." }
+
+unitree-sdk2py-clone = { cmd = ["bash", "-lc", """set -e
+if [ -d ./unitree_sdk2_python/.git ]; then
+  echo "[OK] unitree_sdk2_python already exists"
+else
+  git clone https://github.com/unitreerobotics/unitree_sdk2_python.git ./unitree_sdk2_python
+fi
+"""], description = "Clone unitree_sdk2_python repo if missing." }
+
+# System deps
+unitree-mujoco-apt-deps = { cmd = ["bash", "-lc", "sudo apt update && sudo apt install -y cmake g++ build-essential libyaml-cpp-dev libeigen3-dev libboost-all-dev libspdlog-dev libfmt-dev libglfw3-dev"], description = "Install system dependencies for MuJoCo build." }
+
+# Python install
+unitree-sdk2py-install = { cmd = ["bash", "-lc", """set -e
+python -m pip install -e ./unitree_sdk2_python
+"""], description = "Install unitree_sdk2_python as editable.", depends-on = ["unitree-sdk2py-clone"] }
+
+unitree-sdk2py-setup = { depends-on = ["unitree-sdk2py-clone", "unitree-sdk2py-install"], description = "Clone and install unitree_sdk2_python." }
+
+# MuJoCo assets
+unitree-mujoco-mujoco-download = { cmd = ["bash", "-lc", "python tools/mujoco_download.py \"$@\"", "--"], description = "Download MuJoCo assets for unitree_mujoco.", depends-on = ["unitree-mujoco-clone"] }
+
+unitree-mujoco-link-mujoco = { cmd = ["bash", "-lc", """set -e
+if [ -d unitree_mujoco/simulate/mujoco ]; then
+  echo "[OK] mujoco directory already exists"
+  exit 0
+fi
+echo "[ERROR] mujoco directory not found; run unitree-mujoco-mujoco-download"
+exit 1
+"""], description = "Verify MuJoCo assets are in place.", depends-on = ["unitree-mujoco-clone", "unitree-mujoco-mujoco-download"] }
+
+# Native build
+unitree-mujoco-cpp-build = { cmd = ["bash", "-lc", """set -e
+cd unitree_mujoco/simulate
+mkdir -p build
+cd build
+cmake .. -DCMAKE_C_COMPILER=/usr/bin/gcc -DCMAKE_CXX_COMPILER=/usr/bin/g++
+make -j4
+"""], description = "Build unitree_mujoco C++ simulation.", depends-on = ["unitree-sdk2-install", "unitree-mujoco-link-mujoco"] }
+
+# One-shot setup
+unitree-mujoco-setup = { depends-on = ["unitree-mujoco-apt-deps", "unitree-mujoco-clone", "unitree-sdk2-setup", "unitree-sdk2py-setup", "unitree-mujoco-mujoco-download", "unitree-mujoco-link-mujoco", "unitree-mujoco-cpp-build"], description = "Run full Unitree MuJoCo setup." }
+
+# Run
+sim = { cmd = ["bash", "-lc", "set -e; cd unitree_mujoco; python simulate_python/unitree_mujoco.py \"$@\"", "--"], description = "Run unitree_mujoco Python simulation." }
+
+[environments]
+unitree-rl-lab = ["unitree-rl-lab"]
+unitree-mujoco = ["unitree-mujoco"]

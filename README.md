@@ -1,6 +1,8 @@
 # pixi-IsaacLab-unitreeG1
 
-A reproducible Pixi environment for **IsaacLab / Isaac Sim** and **Unitree RL Lab (G1)** workflows.
+Two Pixi environments are provided:
+- `unitree-rl-lab` for **IsaacLab / Isaac Sim** and **Unitree RL Lab (G1)** workflows.
+- `unitree-mujoco` for **Unitree MuJoCo** (C++/Python simulator) workflows.
 
 This repository tracks the **environment definition** (Pixi manifest + lockfile) and **setup scripts** only.
 Large binaries, cloned repos, caches, and experiment outputs are intentionally ignored.
@@ -20,10 +22,48 @@ GPU drivers / CUDA runtime should be installed according to your machine.
 
 ## Quick Start
 
-### 1) Install the Pixi environment
+### unitree-rl-lab environment
 
+1) Install
 ```bash
-pixi install
+pixi install -e unitree-rl-lab
+```
+
+2) IsaacLab setup
+```bash
+pixi run -e unitree-rl-lab isaaclab-setup
+```
+
+3) rsl_rl setup
+```bash
+pixi run -e unitree-rl-lab rsl-rl-setup
+```
+
+4) VSCode setup
+```bash
+pixi run -e unitree-rl-lab vscode-setup
+```
+
+5) Unitree setup (clone + patch + editable install)
+```bash
+pixi run -e unitree-rl-lab unitree-setup
+```
+
+### unitree-mujoco environment
+
+1) Install
+```bash
+pixi install -e unitree-mujoco
+```
+
+2) One-shot setup (apt deps + sdk2 + sdk2py + mujoco download + build)
+```bash
+pixi run -e unitree-mujoco unitree-mujoco-setup
+```
+
+3) Run the Python simulator
+```bash
+pixi run -e unitree-mujoco sim
 ```
 
 #### Offline / Local Wheels via wheelhouse/
@@ -36,25 +76,3 @@ In pixi.toml:
 # Uncomment to use local wheels from ./wheelhouse
 # find-links = [{ path = "./wheelhouse" }]
 ```
-
-### 2) IsaacLab setup
-```bash
-pixi run isaaclab-setup
-```
-
-### 3) rsl_rl setup
-```bash
-pixi rsl-rl-setup
-```
-
-### 4) VSCode setup
-```bash
-pixi run vscode-setup
-```
-
-### 5) Unitree setup (clone + patch + editable install)
-```bash
-pixi run unitree-setup
-```
-
-
